@@ -1,61 +1,78 @@
-import UserModel from "../models/UserModel";
+import UserModel from "../models/UserModel.js";
 import bcryptjs from "bcryptjs";
 
 const SALT = 14;
 
-export const createUser = async (userData) => {
+export const createUser = async (req, res) => {
   try {
+    const userData = req.body;
+    console.log(userData);
     const hashedPassword = await bcryptjs.hash(userData.password, SALT);
     const newUser = new UserModel({ ...userData, password: hashedPassword });
     const savedUser = await newUser.save();
-    return savedUser;
+    return res.status(201).json(savedUser);
   } catch (err) {
     console.error("Error creating user:", err);
-    throw err;
+    return res.status(500).json({ error: "Error creating user" });
   }
 };
 
-export const getUsers = async () => {
+export const getUsers = async (req, res) => {
   try {
     const users = await UserModel.find({}).exec();
-    return users;
+    return res.status(200).json(users);
   } catch (err) {
     console.error("Error finding users:", err);
-    throw err;
+    return res.status(500).json({ error: "Error finding users" });
   }
 };
 
-export const getUserById = async (userId) => {
+export const getUserById = async (req, res) => {
   try {
-    const user = await UserModel.findById(userId).exec();
-    return user;
+    const { userId } = req.params;
+    const user = await UserModel.findOne({ userID: userId }).exec();
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    return res.status(200).json(user);
   } catch (err) {
     console.error("Error finding user:", err);
-    throw err;
+    return res.status(500).json({ error: "Error finding user" });
   }
 };
 
-export const updateUser = async (userId, updateData) => {
+export const updateUser = async (req, res) => {
   try {
+    const { userId } = req.params;
+    const updateData = req.body;
     if (updateData.password) {
       updateData.password = await bcryptjs.hash(updateData.password, SALT);
     }
-    const updatedUser = await UserModel.findByIdAndUpdate(userId, updateData, {
+    const { _id } = await UserModel.findOne({ userID: userId }).exec();
+    const updatedUser = await UserModel.findByIdAndUpdate(_id, updateData, {
       new: true,
     }).exec();
-    return updatedUser;
+    if (!updatedUser) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    return res.status(200).json(updatedUser);
   } catch (err) {
     console.error("Error updating user:", err);
-    throw err;
+    return res.status(500).json({ error: "Error updating user" });
   }
 };
 
-export const deleteUser = async (userId) => {
+export const deleteUser = async (req, res) => {
   try {
-    const deletedUser = await UserModel.findByIdAndDelete(userId).exec();
-    return deletedUser;
+    const { userId } = req.params;
+    const { _id } = await UserModel.findOne({ userID: userId }).exec();
+    const deletedUser = await UserModel.findByIdAndDelete(_id).exec();
+    if (!deletedUser) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    return res.status(200).json(deletedUser);
   } catch (err) {
     console.error("Error deleting user:", err);
-    throw err;
+    return res.status(500).json({ error: "Error deleting user" });
   }
 };
